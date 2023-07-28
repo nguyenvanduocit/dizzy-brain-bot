@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  wire:
+    silent: true
+    cmds:
+      - wire ./cmd/server/...
+  local:
+    silent: true
+    ignore_error: true
+    cmds:
+      - railway down
+      - go run ./cmd/server/...
+  deploy:
+    silent: true
+    cmds:
+      - railway up -d -e production
