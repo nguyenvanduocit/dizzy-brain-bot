@@ -83,6 +83,43 @@ func (c *LLMClient) ResetConversation(conversationID string) {
 	}
 }
 
+// doRequest makes a request to the LLM API.
+func (c *LLMClient) doRequest(cloned MessagePrompt) ([]byte, error) {
+	payload := new(bytes.Buffer)
+	err := json.NewEncoder(payload).Encode(GenerateMessageRequest{
+		Prompt:         cloned,
+		Temperature:    0.5,
+		CandidateCount: 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Create the request.
+	req, err := http.NewRequest("POST", "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage?key="+c.PalmAPIKey, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the content type header.
+	req.Header.Set("Content-Type", "application/json")
+
+	// Make the request.
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+
+	// Read the response body.
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
 func (c *LLMClient) GenerateText(conversationID string, authorID int64, message string) (string, error) {
 	if c.Conversations[conversationID] == nil {
 		c.Conversations[conversationID] = &MessagePrompt{
@@ -97,38 +134,7 @@ func (c *LLMClient) GenerateText(conversationID string, authorID int64, message 
 	}
 	cloned.Messages = append(c.Conversations[conversationID].Messages, newUserMessage)
 
-	// Create the payload.
-	payload := new(bytes.Buffer)
-	err := json.NewEncoder(payload).Encode(GenerateMessageRequest{
-		Prompt:         cloned,
-		Temperature:    0.5,
-		CandidateCount: 1,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	// Create the request.
-	req, err := http.NewRequest("POST", "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage?key="+c.PalmAPIKey, payload)
-	if err != nil {
-		return "", err
-	}
-
-	// Set the content type header.
-	req.Header.Set("Content-Type", "application/json")
-
-	// Make the request.
-	response, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-
-	// Read the response body.
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-
+	body, err := c.doRequest(cloned)
 	// Unmarshal the response.
 	var resp GenerateMessageResponse
 	err = json.Unmarshal(body, &resp)
@@ -175,34 +181,7 @@ func (c *LLMClient) SummaryConversation(authorID, conversationID string) (*Messa
 	}
 	cloned.Messages = append(c.Conversations[conversationID].Messages, newUserMessage)
 
-	// Create the payload.
-	payload := new(bytes.Buffer)
-	err := json.NewEncoder(payload).Encode(GenerateMessageRequest{
-		Prompt:         cloned,
-		Temperature:    0.5,
-		CandidateCount: 1,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Create the request.
-	req, err := http.NewRequest("POST", "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage?key="+c.PalmAPIKey, payload)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the content type header.
-	req.Header.Set("Content-Type", "application/json")
-
-	// Make the request.
-	response, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read the response body.
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := c.doRequest(cloned)
 	if err != nil {
 		return nil, err
 	}
