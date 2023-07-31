@@ -105,6 +105,8 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
+	msg.ReplyMarkup = tgbotapi.ForceReply{ForceReply: true, Selective: true}
+	msg.ParseMode = tgbotapi.ModeMarkdown
 	msg.ReplyToMessageID = message.MessageID
 
 	if _, err := bot.Send(msg); err != nil {
