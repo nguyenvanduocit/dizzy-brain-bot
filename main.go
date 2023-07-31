@@ -144,7 +144,8 @@ var stickerFileIDs = map[string]string{
 
 func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
 	conversationID := strconv.FormatInt(message.Chat.ID, 10)
-	responseMessage, err := llmClient.GenerateText(conversationID, message.From.ID, message.Text)
+	// authorID must be 0, because we have to use the same for all message
+	responseMessage, err := llmClient.GenerateText(conversationID, 0, message.Text)
 	if err != nil {
 		responseMessage = err.Error()
 	}
