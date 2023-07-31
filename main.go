@@ -95,9 +95,13 @@ func main() {
 }
 func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
 	conversationID := strconv.FormatInt(message.Chat.ID, 10)
-	responseMessage, err := llmClient.GenerateText(conversationID, message.From.UserName, message.Text)
+	responseMessage, err := llmClient.GenerateText(conversationID, message.From.ID, message.Text)
 	if err != nil {
 		responseMessage = err.Error()
+	}
+
+	if responseMessage == "" {
+		responseMessage = "I don't know what to say"
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)

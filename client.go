@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 type LLMClient struct {
@@ -12,7 +14,7 @@ type LLMClient struct {
 	Conversations map[string]*MessagePrompt
 }
 
-const defaultContext = "You are a helpful personal assistant: DizzyBot, you are in a group chat, there are two member: Duoc(a develper) and Truc Xinh (a designer), they are a couple. Your will help to answer their questions in a funny and helpful, use emoji as much as you can"
+const defaultContext = "You are a helpful personal assistant: DizzyBot, you are in a group chat, there are two member: henry_duocnv(a develper) and Truc Xinh (a designer), they are a couple. Your will help to answer their questions in a funny and helpful, use emoji as much as you can"
 
 func NewLLMClient(palmAPIKey string) *LLMClient {
 	return &LLMClient{
@@ -31,6 +33,7 @@ type GenerateMessageResponse struct {
 	Candidates []Message       `json:"candidates"`
 	Messages   []Message       `json:"messages"`
 	Filters    []ContentFilter `json:"filters"`
+	Error      *GenerateError  `json:"error,omitempty"`
 }
 
 type ContentFilter struct {
@@ -73,7 +76,7 @@ func (c *LLMClient) ResetConversation(conversationID string) {
 	}
 }
 
-func (c *LLMClient) GenerateText(conversationID, author, message string) (string, error) {
+func (c *LLMClient) GenerateText(conversationID string, authorID int64, message string) (string, error) {
 	if c.Conversations[conversationID] == nil {
 		c.Conversations[conversationID] = &MessagePrompt{
 			Context: defaultContext,
@@ -81,7 +84,7 @@ func (c *LLMClient) GenerateText(conversationID, author, message string) (string
 	}
 
 	c.Conversations[conversationID].Messages = append(c.Conversations[conversationID].Messages, Message{
-		Author:  author,
+		Author:  strconv.FormatInt(authorID, 10),
 		Content: message,
 	})
 
@@ -111,11 +114,6 @@ func (c *LLMClient) GenerateText(conversationID, author, message string) (string
 		return "", err
 	}
 
-	// Check the response code.
-	if response.StatusCode != http.StatusOK {
-		return "", err
-	}
-
 	// Read the response body.
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -129,8 +127,27 @@ func (c *LLMClient) GenerateText(conversationID, author, message string) (string
 		return "", err
 	}
 
+	// Check the response code.
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+
+	if resp.Filters != nil {
+		return "", errors.New(resp.Filters[0].Reason)
+	}
+
 	// Update the conversation.
-	c.Conversations[conversationID].Messages = resp.Messages
+	c.Conversations[conversationID].Messages = append(c.Conversations[conversationID].Messages, resp.Candidates[0])
+
+	if len(c.Conversations[conversationID].Messages) > 5 {
+		c.Conversations[conversationID].Messages = c.Conversations[conversationID].Messages[len(c.Conversations[conversationID].Messages)-5:]
+	}
 
 	return resp.Candidates[0].Content, nil
+}
+
+type GenerateError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Status  string `json:"status"`
 }
