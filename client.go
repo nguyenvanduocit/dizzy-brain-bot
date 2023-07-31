@@ -61,7 +61,7 @@ type Example struct {
 func (c *LLMClient) SetContext(conversationID, context string) {
 	if c.Conversations[conversationID] == nil {
 		c.Conversations[conversationID] = &MessagePrompt{
-			Context: defaultContext,
+			Context: context,
 		}
 	} else {
 		c.Conversations[conversationID].Context = context

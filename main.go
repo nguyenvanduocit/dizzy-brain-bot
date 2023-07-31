@@ -119,6 +119,9 @@ func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.
 	case "reset":
 		llmClient.ResetConversation(strconv.FormatInt(message.Chat.ID, 10))
 		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Reset successfully"))
+	case "context":
+		llmClient.SetContext(strconv.FormatInt(message.Chat.ID, 10), message.CommandArguments())
+		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Set context successfully"))
 	}
 }
 
