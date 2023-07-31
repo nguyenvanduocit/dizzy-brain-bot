@@ -7,7 +7,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yuin/goldmark"
 	"go.uber.org/zap"
-	"net/http"
 	"os"
 	"strconv"
 )
@@ -141,7 +140,6 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, buf.String())
-	msg.ParseMode = tgbotapi.ModeHTML
 	msg.ReplyToMessageID = message.MessageID
 
 	if _, err := bot.Send(msg); err != nil {
@@ -162,18 +160,4 @@ func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.
 		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Restarting..."))
 		os.Exit(0)
 	}
-}
-
-func startHealthServer(httpPort string) error {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "OK")
-	}
-
-	// Listen on port 8080.
-	http.HandleFunc("/healthz", handler)
-	if err := http.ListenAndServe(":"+httpPort, nil); err != nil {
-		return err
-	}
-
-	return nil
 }
