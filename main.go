@@ -10,7 +10,10 @@ import (
 	"strconv"
 )
 
-const allowedChatID = -1001905601063
+var allowedChatIDs = []int64{
+	-1001905601063,
+	1831420107,
+}
 
 func main() {
 	logger, err := zap.NewProduction()
@@ -18,6 +21,21 @@ func main() {
 		panic(err)
 	}
 
+	// health check
+	go func() {
+		httpPort := os.Getenv("PORT")
+		if httpPort == "" {
+			httpPort = "8080"
+		}
+
+		logger.Info("http server started", zap.String("port", httpPort))
+
+		if err := startHealthServer(httpPort); err != nil {
+			logger.Error("http server error", zap.Error(err))
+		}
+	}()
+
+	// the AI
 	telegramToken := os.Getenv("TELEGRAM_API_TOKEN")
 	if telegramToken == "" {
 		logger.Panic("telegram api token is empty")
@@ -42,20 +60,6 @@ func main() {
 	updateConfig.Timeout = 30
 	updates := bot.GetUpdatesChan(updateConfig)
 
-	go func() {
-		// health check http handler
-		httpPort := os.Getenv("PORT")
-		if httpPort == "" {
-			httpPort = "8080"
-		}
-
-		logger.Info("http server started", zap.String("port", httpPort))
-
-		if err := startHealthServer(httpPort); err != nil {
-			logger.Error("http server error", zap.Error(err))
-		}
-	}()
-
 	for update := range updates {
 
 		logger.Info("update", zap.Any("update", update))
@@ -64,7 +68,15 @@ func main() {
 			continue
 		}
 
-		if update.FromChat().ID != allowedChatID {
+		isAllowed := false
+		for _, allowedChatID := range allowedChatIDs {
+			if update.Message.Chat.ID == allowedChatID {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
 			bot.Send(tgbotapi.NewMessage(update.FromChat().ID, "To use this bot please contact @henry_duocnv"))
 			continue
 		}
@@ -108,7 +120,7 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	msg.ReplyMarkup = tgbotapi.ForceReply{
 		InputFieldPlaceholder: "Type a message...",
 	}
-	msg.ParseMode = tgbotapi.ModeMarkdown
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	msg.ReplyToMessageID = message.MessageID
 
 	if _, err := bot.Send(msg); err != nil {
