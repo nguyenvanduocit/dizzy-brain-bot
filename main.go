@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/alitto/pond"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/yuin/goldmark"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -133,8 +135,13 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 		responseMessage = "I don't know what to say"
 	}
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
-	msg.ParseMode = tgbotapi.ModeMarkdown
+	var buf bytes.Buffer
+	if err := goldmark.Convert([]byte(responseMessage), &buf); err != nil {
+		panic(err)
+	}
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, buf.String())
+	msg.ParseMode = tgbotapi.ModeHTML
 	msg.ReplyToMessageID = message.MessageID
 
 	if _, err := bot.Send(msg); err != nil {
