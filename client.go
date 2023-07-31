@@ -135,7 +135,7 @@ func (c *LLMClient) GenerateText(conversationID string, authorID int64, message 
 	}
 
 	if resp.Filters != nil {
-		return "", errors.New(resp.Filters[0].Reason)
+		return "", errors.New(resp.Filters[0].Message.Content)
 	}
 
 	// Update the conversation.
