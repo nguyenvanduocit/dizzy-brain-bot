@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"os"
+	"regexp"
 	"strconv"
 )
 
@@ -121,6 +122,22 @@ func main() {
 	}
 
 }
+
+func getEmojis(text string) []string {
+	// Create the regex.
+	regex := regexp.MustCompile(`:([\w\-_]+?):`)
+
+	// Find all matches.
+	matches := regex.FindAllString(text, -1)
+
+	// Return the matches.
+	return matches
+}
+
+var stickerFileIDs = map[string]string{
+	":smile:": "AAMCAgADGQEAASRjD2THZCLbmbI_FXODlsnBi4HCNtNcAAITDwACA4l5SuBzHh3CewwiAQAHbQADLwQ",
+}
+
 func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
 	conversationID := strconv.FormatInt(message.Chat.ID, 10)
 	responseMessage, err := llmClient.GenerateText(conversationID, message.From.ID, message.Text)
@@ -135,6 +152,19 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	if _, err := bot.Send(msg); err != nil {
 		panic(err)
 	}
+
+	stickerIds := getEmojis(responseMessage)
+	for _, stickerID := range stickerIds {
+		fileID, ok := stickerFileIDs[stickerID]
+		if !ok {
+			continue
+		}
+		sticker := tgbotapi.NewSticker(message.Chat.ID, tgbotapi.FileID(fileID))
+		if _, err := bot.Send(sticker); err != nil {
+			panic(err)
+		}
+	}
+
 }
 
 func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
