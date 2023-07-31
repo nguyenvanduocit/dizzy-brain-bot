@@ -130,6 +130,7 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
 	msg.ReplyToMessageID = message.MessageID
+	// send sticker
 
 	if _, err := bot.Send(msg); err != nil {
 		panic(err)
@@ -137,16 +138,30 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 }
 
 func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
+	respMessage := tgbotapi.NewMessage(message.Chat.ID, "Reset successfully")
 	switch message.Command() {
 	case "reset":
 		llmClient.ResetConversation(strconv.FormatInt(message.Chat.ID, 10))
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Reset successfully"))
+		respMessage.Text = "Reset successfully"
 	case "context":
 		llmClient.SetContext(strconv.FormatInt(message.Chat.ID, 10), message.CommandArguments())
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Set context successfully"))
+		respMessage.Text = "Set context successfully"
 	case "restart":
-		// send terminate signal to the bot
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Restarting..."))
+		respMessage.Text = "Restarting..."
+		// lol
 		os.Exit(0)
 	}
+
+	respMessage.ReplyToMessageID = message.MessageID
+	respMessage.Entities = []tgbotapi.MessageEntity{
+		{
+			Type:   "bot_command",
+			Offset: 0,
+			Length: len(respMessage.Text),
+		},
+	}
+	if _, err := bot.Send(respMessage); err != nil {
+		panic(err)
+	}
+
 }
