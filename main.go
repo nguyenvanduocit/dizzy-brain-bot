@@ -66,7 +66,10 @@ func main() {
 	}
 	openAiClient := NewLLMClient(palmApiToken)
 
-	pool := pond.New(100, 1000)
+	pool := pond.New(100, 1000, pond.PanicHandler(func(r interface{}) {
+		logger.Error("goroutine panic", zap.Any("panic", r))
+		sendMessageToAdmin(bot, fmt.Sprintf("goroutine panic: %v", r))
+	}))
 	defer pool.StopAndWait()
 
 	updateConfig := tgbotapi.NewUpdate(0)
