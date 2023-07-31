@@ -69,6 +69,7 @@ func main() {
 	pool := pond.New(100, 1000, pond.PanicHandler(func(r interface{}) {
 		logger.Error("goroutine panic", zap.Any("panic", r))
 		sendMessageToAdmin(bot, fmt.Sprintf("goroutine panic: %v", r))
+
 	}))
 	defer pool.StopAndWait()
 
@@ -133,7 +134,7 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	msg.ParseMode = tgbotapi.ModeMarkdown
 	msg.ReplyToMessageID = message.MessageID
 
 	if _, err := bot.Send(msg); err != nil {
