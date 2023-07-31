@@ -130,9 +130,6 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
-	msg.ReplyMarkup = tgbotapi.ForceReply{
-		InputFieldPlaceholder: "Type a message...",
-	}
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	msg.ReplyToMessageID = message.MessageID
 
