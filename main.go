@@ -149,6 +149,10 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 		responseMessage = err.Error()
 	}
 
+	if responseMessage == "" {
+		responseMessage = "Sorry, I don't understand"
+	}
+
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
 	msg.ReplyToMessageID = message.MessageID
 	// send sticker
