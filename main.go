@@ -15,6 +15,16 @@ var allowedChatIDs = []int64{
 	1831420107,
 }
 
+var adminID int64 = 1831420107
+
+func sendMessageToAdmin(bot *tgbotapi.BotAPI, message string) {
+	msg := tgbotapi.NewMessage(adminID, message)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	if _, err := bot.Send(msg); err != nil {
+		panic(err)
+	}
+}
+
 func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -46,6 +56,9 @@ func main() {
 		logger.Panic("telegram bot api", zap.Error(err))
 	}
 	bot.Debug = true
+
+	sendMessageToAdmin(bot, "Bot started")
+	defer sendMessageToAdmin(bot, "Bot stopped")
 
 	palmApiToken := os.Getenv("PALM_API_KEY")
 	if palmApiToken == "" {
