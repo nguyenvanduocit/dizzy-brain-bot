@@ -135,7 +135,10 @@ func getEmojis(text string) []string {
 }
 
 var stickerFileIDs = map[string]string{
-	":smile:": "AAMCAgADGQEAASRjD2THZCLbmbI_FXODlsnBi4HCNtNcAAITDwACA4l5SuBzHh3CewwiAQAHbQADLwQ",
+	":smile:": "CAACAgIAAxkBAAEkYw9kx2Qi25myPxVzg5bJwYuBwjbTXAACEw8AAgOJeUrgcx4dwnsMIi8E",
+	":angry:": "CAACAgIAAxkBAAEkYzRkx2f5F0VBHOlnRNsymwACY9tP5AACOxEAAu51cEq0-CRa8FRooC8E",
+	":cry:":   "CAACAgIAAxkBAAEkYzlkx2hmxBpZbd-yEGxvWjKtM_-39wAC4BMAAqKFaUgNwTe58GadoC8E",
+	":sad:":   "CAACAgIAAxkBAAEkYztkx2iPFy0YjYEmtuXpBvbeAWZ4RAAClBQAAudQcUqDwu0W7SYtAi8E",
 }
 
 func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
