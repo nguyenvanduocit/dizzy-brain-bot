@@ -83,15 +83,17 @@ func (c *LLMClient) GenerateText(conversationID string, authorID int64, message 
 		}
 	}
 
-	c.Conversations[conversationID].Messages = append(c.Conversations[conversationID].Messages, Message{
+	cloned := *c.Conversations[conversationID]
+	newUserMessage := Message{
 		Author:  strconv.FormatInt(authorID, 10),
 		Content: message,
-	})
+	}
+	cloned.Messages = append(c.Conversations[conversationID].Messages, newUserMessage)
 
 	// Create the payload.
 	payload := new(bytes.Buffer)
 	err := json.NewEncoder(payload).Encode(GenerateMessageRequest{
-		Prompt:         *c.Conversations[conversationID],
+		Prompt:         cloned,
 		Temperature:    0.5,
 		CandidateCount: 1,
 	})
@@ -137,7 +139,8 @@ func (c *LLMClient) GenerateText(conversationID string, authorID int64, message 
 	}
 
 	// Update the conversation.
-	c.Conversations[conversationID].Messages = append(c.Conversations[conversationID].Messages, resp.Candidates[0])
+
+	c.Conversations[conversationID].Messages = append(cloned.Messages, resp.Candidates[0])
 
 	if len(c.Conversations[conversationID].Messages) > 5 {
 		c.Conversations[conversationID].Messages = c.Conversations[conversationID].Messages[len(c.Conversations[conversationID].Messages)-5:]
