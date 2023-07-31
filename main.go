@@ -105,7 +105,9 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
-	msg.ReplyMarkup = tgbotapi.ForceReply{ForceReply: true, Selective: true}
+	msg.ReplyMarkup = tgbotapi.ForceReply{
+		Me
+	}
 	msg.ParseMode = tgbotapi.ModeMarkdown
 	msg.ReplyToMessageID = message.MessageID
 
@@ -122,6 +124,10 @@ func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.
 	case "context":
 		llmClient.SetContext(strconv.FormatInt(message.Chat.ID, 10), message.CommandArguments())
 		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Set context successfully"))
+	case "restart":
+		// send terminate signal to the bot
+		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Restarting..."))
+		os.Exit(0)
 	}
 }
 
