@@ -1,14 +1,13 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"github.com/alitto/pond"
-	"github.com/dgraph-io/ristretto"
-	"github.com/sashabaranov/go-openai"
-	"os"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
+	"net/http"
+	"os"
+	"strconv"
 )
 
 const allowedChatID = -1001905601063
@@ -30,22 +29,11 @@ func main() {
 	}
 	bot.Debug = true
 
-	openAiToken := os.Getenv("OPENAI_API_TOKEN")
-	if openAiToken == "" {
-		logger.Panic("openai api token is empty")
+	palmApiToken := os.Getenv("PALM_API_KEY")
+	if palmApiToken == "" {
+		logger.Panic("PALM_API_KEY is empty")
 	}
-	openAiClient := openai.NewClient(openAiToken)
-
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,
-		MaxCost:     1 << 30,
-		BufferItems: 64,
-	})
-
-	if err != nil {
-		logger.Panic("create cache", zap.Error(err))
-	}
-	defer cache.Close()
+	openAiClient := NewLLMClient(palmApiToken)
 
 	pool := pond.New(100, 1000)
 	defer pool.StopAndWait()
@@ -53,6 +41,20 @@ func main() {
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 30
 	updates := bot.GetUpdatesChan(updateConfig)
+
+	go func() {
+		// health check http handler
+		httpPort := os.Getenv("PORT")
+		if httpPort == "" {
+			httpPort = "8080"
+		}
+
+		logger.Info("http server started", zap.String("port", httpPort))
+
+		if err := startHealthServer(httpPort); err != nil {
+			logger.Error("http server error", zap.Error(err))
+		}
+	}()
 
 	for update := range updates {
 
@@ -73,11 +75,10 @@ func main() {
 
 		// make a copy of the message, because we need to pass it to the goroutine
 		message := *update.Message
-
 		// handle commands
 		if message.IsCommand() {
 			pool.Submit(func() {
-				handleCommand(cache, openAiClient, bot, message)
+				handleCommand(openAiClient, bot, message)
 			})
 			continue
 		}
@@ -85,72 +86,46 @@ func main() {
 		// handle text messages
 		if bot.IsMessageToMe(message) {
 			pool.Submit(func() {
-				handleTextMessage(cache, openAiClient, bot, message)
+				handleTextMessage(openAiClient, bot, message)
 			})
 			continue
 		}
 	}
 
 }
-
-var generateSystemInstruction = func(bot *tgbotapi.BotAPI, message tgbotapi.Message) openai.ChatCompletionMessage {
-	senderName := message.From.FirstName + " " + message.From.LastName
-	return openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleSystem,
-		Content: "You're a telegram bot, your name is " + bot.Self.UserName + ". You are very funny, but do not talk much, Always answer in Vietnamese, Xưng hô: 'I' = Tao, 'You = mày'. \n\n Here are some context: \n\n Sender name: " + senderName,
-	}
-}
-
-func handleTextMessage(cache *ristretto.Cache, openAiClient *openai.Client, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
-
-	messages := []openai.ChatCompletionMessage{
-		generateSystemInstruction(bot, message),
-	}
-	if data, ok := cache.Get(message.Chat.ID); ok {
-		history := data.([]openai.ChatCompletionMessage)
-		messages = append(messages, history...)
-	}
-
-	messages = append(messages, openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleUser,
-		Content: message.Text,
-	})
-
-	responseMessage := tgbotapi.NewMessage(message.Chat.ID, "I don't know that command")
-	responseMessage.ReplyToMessageID = message.MessageID
-	resp, err := openAiClient.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model:    openai.GPT3Dot5Turbo,
-			Messages: messages,
-		},
-	)
-
+func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
+	conversationID := strconv.FormatInt(message.Chat.ID, 10)
+	responseMessage, err := llmClient.GenerateText(conversationID, message.From.UserName, message.Text)
 	if err != nil {
-		responseMessage.Text = "Err when create chat completion: " + err.Error()
-		// remove the last message
-		messages = messages[:len(messages)-1]
-	} else {
-		responseMessage.Text = resp.Choices[0].Message.Content
-		messages = append(messages, resp.Choices[0].Message)
+		responseMessage = err.Error()
 	}
 
-	if len(messages) > 5 {
-		// remove the oldest message
-		messages = messages[1:]
-	}
+	msg := tgbotapi.NewMessage(message.Chat.ID, responseMessage)
+	msg.ReplyToMessageID = message.MessageID
 
-	cache.Set(message.Chat.ID, messages, 0)
-
-	if _, err := bot.Send(responseMessage); err != nil {
+	if _, err := bot.Send(msg); err != nil {
 		panic(err)
 	}
 }
 
-func handleCommand(cache *ristretto.Cache, openAiClient *openai.Client, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
+func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
 	switch message.Command() {
 	case "reset":
-		cache.Del(message.Chat.ID)
+		llmClient.ResetConversation(strconv.FormatInt(message.Chat.ID, 10))
 		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Reset successfully"))
 	}
+}
+
+func startHealthServer(httpPort string) error {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "OK")
+	}
+
+	// Listen on port 8080.
+	http.HandleFunc("/healthz", handler)
+	if err := http.ListenAndServe(":"+httpPort, nil); err != nil {
+		return err
+	}
+
+	return nil
 }
