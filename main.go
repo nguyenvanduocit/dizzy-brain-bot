@@ -139,6 +139,7 @@ var stickerFileIDs = map[string]string{
 	":angry:": "CAACAgIAAxkBAAEkYzRkx2f5F0VBHOlnRNsymwACY9tP5AACOxEAAu51cEq0-CRa8FRooC8E",
 	":cry:":   "CAACAgIAAxkBAAEkYzlkx2hmxBpZbd-yEGxvWjKtM_-39wAC4BMAAqKFaUgNwTe58GadoC8E",
 	":sad:":   "CAACAgIAAxkBAAEkYztkx2iPFy0YjYEmtuXpBvbeAWZ4RAAClBQAAudQcUqDwu0W7SYtAi8E",
+	":hug:":   "CAACAgIAAxkBAAEkYz1kx2l1kPTi-iisPh0hLjAeN_mWEAACMQEAAlKJkSNy74zuyFRhcy8E",
 }
 
 func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
