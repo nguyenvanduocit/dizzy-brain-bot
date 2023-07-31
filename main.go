@@ -109,7 +109,7 @@ func main() {
 		}
 
 		// handle text messages
-		if bot.IsMessageToMe(message) {
+		if bot.IsMessageToMe(message) || message.Chat.IsPrivate() {
 			pool.Submit(func() {
 				handleTextMessage(openAiClient, bot, message)
 			})
