@@ -179,6 +179,7 @@ func handleTextMessage(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbot
 func handleCommand(llmClient *LLMClient, bot *tgbotapi.BotAPI, message tgbotapi.Message) {
 	respMessage := tgbotapi.NewMessage(message.Chat.ID, "Reset successfully")
 	switch message.Command() {
+	case "set-room-id":
 	case "reset":
 		llmClient.ResetConversation(strconv.FormatInt(message.Chat.ID, 10))
 		respMessage.Text = "Reset successfully"
