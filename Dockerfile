@@ -7,7 +7,7 @@ COPY go.sum .
 RUN go mod download
 
 COPY . /codebase
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ./bin/server ./...
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ./bin/server .
 
 FROM scratch
 
